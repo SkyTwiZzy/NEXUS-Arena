@@ -5,6 +5,7 @@ import getpass
 import os
 from pathlib import Path
 import socket
+import sqlite3
 import sys
 import threading
 import time
@@ -49,19 +50,41 @@ def configure_developer() -> None:
     print('Note: this launcher does not reset existing passwords.')
 
 
+def require_owner(db_path: Path) -> None:
+    """Never open a public share link for a database without an OWNER role."""
+    if not db_path.is_file():
+        sys.exit('ERROR: Owner not configured. First run SETUP_OWNER_AND_START.bat, then stop it.')
+    try:
+        con = sqlite3.connect(db_path)
+        try:
+            owner = con.execute("SELECT 1 FROM users WHERE staff_role='OWNER' LIMIT 1").fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error as exc:
+        sys.exit('ERROR: Could not verify owner account: ' + str(exc))
+    if not owner:
+        sys.exit('ERROR: No OWNER account. Run SETUP_OWNER_AND_START.bat before sharing publicly.')
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--developer', action='store_true')
+    parser.add_argument('--public', action='store_true', help='Serve locally behind an HTTPS tunnel')
     args = parser.parse_args()
     os.chdir(ROOT)
     # Running a script from tools/ changes sys.path[0]; add the project root
     # so Uvicorn can import the server package.
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    # Local use only: secure cookies are for HTTPS deployments, not localhost.
-    os.environ['COOKIE_SECURE'] = '0'
-    os.environ.pop('PUBLIC_ORIGIN', None)
     os.environ.setdefault('NEXUS_DB', str(ROOT / 'server' / 'arena.sqlite3'))
+    # --public is intended ONLY with HTTPS termination at a trusted tunnel.
+    os.environ['COOKIE_SECURE'] = '1' if args.public else '0'
+    os.environ.pop('PUBLIC_ORIGIN', None)
+    if args.public:
+        require_owner(Path(os.environ['NEXUS_DB']))
+        os.environ['NEXUS_AUTO_OPEN'] = '0'
+        print('PUBLIC SHARE MODE: HTTPS tunnel is required; do not share localhost.')
+        print('Change any password previously shared in chat before proceeding.')
     if args.developer:
         configure_developer()
         # Bootstrap once, then remove the secret from the running server process.
@@ -81,6 +104,8 @@ def main() -> int:
         import uvicorn
         threading.Thread(target=open_when_ready, daemon=True).start()
         print('Starting NEXUS Arena on ' + URL)
+        if args.public:
+            print('NEXT: leave this window open and launch START_PUBLIC_LINK.bat in another window.')
         print('Press Ctrl+C in this window to stop.')
         uvicorn.run('server.app:app', host='127.0.0.1', port=8000, log_level='info')
     except KeyboardInterrupt:

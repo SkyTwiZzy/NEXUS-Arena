@@ -7,4 +7,4 @@ COPY web /app/web
 ENV NEXUS_DB=/data/arena.sqlite3
 RUN mkdir -p /data
 EXPOSE 8000
-CMD ["uvicorn","server.app:app","--host","0.0.0.0","--port","8000","--workers","1"]
+CMD ["sh","-c","exec uvicorn server.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers"]

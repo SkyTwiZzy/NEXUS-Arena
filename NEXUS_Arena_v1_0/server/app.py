@@ -330,7 +330,7 @@ def initialize():
                             (admin_email,password_hash(admin_pass),os.getenv('ADMIN_NICK','NEXUS_OWNER'),1,1,'OWNER',now()))
 
 
-app = FastAPI(title='NEXUS Arena API', version='1.0.0', docs_url=None, redoc_url=None)
+app = FastAPI(title='NEXUS Arena API', version='1.1.0', docs_url=None, redoc_url=None)
 initialize()
 
 
@@ -338,7 +338,12 @@ initialize()
 async def security(request: Request, call_next):
     if request.url.path.startswith('/api/') and request.method in ('POST','PUT','PATCH','DELETE'):
         origin = request.headers.get('origin')
-        allowed = PUBLIC_ORIGIN or f'{request.url.scheme}://{request.headers.get("host","")}'
+        # The app can run behind Caddy, Render or a Cloudflare HTTPS tunnel.
+        # Proxies may forward HTTP internally, so derive the public scheme from
+        # COOKIE_SECURE when no explicit PUBLIC_ORIGIN has been configured.
+        # The browser Origin must always match the request Host (or pinned origin).
+        host = request.headers.get('host', '')
+        allowed = PUBLIC_ORIGIN or ('https://' if COOKIE_SECURE else 'http://') + host
         if origin and origin.rstrip('/') != allowed: return JSONResponse({'detail':'Недопустимый источник запроса'}, status_code=403)
         length = request.headers.get('content-length')
         max_size = (AVATAR_MAX_BODY if request.url.path == '/api/me/avatar' else
@@ -1595,7 +1600,7 @@ def delete_account(form:DeleteAccount,request:Request):
 
 
 @app.get('/api/status')
-def status(): return {'service':'NEXUS Arena','online':True,'version':'1.0'}
+def status(): return {'service':'NEXUS Arena','online':True,'version':'1.1'}
 
 
 @app.get('/terms')

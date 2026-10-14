@@ -15,7 +15,7 @@ set "PIP_DISABLE_PIP_VERSION_CHECK=1"
 set "PIP_DEFAULT_TIMEOUT=30"
 
 echo ==================================================
-echo        NEXUS ARENA - WINDOWS v1.0
+echo        NEXUS ARENA - WINDOWS v1.1
 echo ==================================================
 echo.
 echo Install log: "%INSTALL_LOG%"
@@ -96,6 +96,8 @@ echo DO NOT close this window while using the site.
 echo.
 if /I "%~1"=="developer" (
     ".venv\Scripts\python.exe" "tools\launch_local.py" --developer
+) else if /I "%~1"=="public" (
+    ".venv\Scripts\python.exe" "tools\launch_local.py" --public
 ) else (
     ".venv\Scripts\python.exe" "tools\launch_local.py"
 )
