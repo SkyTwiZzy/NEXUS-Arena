@@ -1,0 +1,27 @@
+# NEXUS Arena — Render Blueprint (paid persistent storage REQUIRED).
+# Render's free/ephemeral filesystem loses SQLite data and must not be used.
+services:
+  - type: web
+    name: nexus-arena
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/status
+    numInstances: 1
+    disk:
+      name: nexus-arena-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NEXUS_DB
+        value: /data/arena.sqlite3
+      - key: COOKIE_SECURE
+        value: '1'
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NICK
+        value: NEXUS_OWNER
+# After first successful owner creation, remove ADMIN_PASSWORD and ADMIN_EMAIL
+# from the Render dashboard and redeploy to avoid keeping bootstrap secrets.
+# Optionally set PUBLIC_ORIGIN to the exact public HTTPS URL after deployment.
