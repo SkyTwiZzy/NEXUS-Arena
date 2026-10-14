@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090912">
+  <meta name="description" content="NEXUS Arena — соревновательная платформа Mobile Legends: Bang Bang: рейтинги, кланы, турниры и лобби 5×5.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/nexus-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css?v=v100-modes-kd">
+  <title>NEXUS Arena 1.0 — MLBB Competitive</title>
+</head>
+<body class="pre-auth">
+ <div id="app" class="layout">
+  <aside class="sidebar" id="sidebar">
+   <div class="brand-block"><img src="/icons/nexus-mark.svg" alt="Логотип NEXUS" class="brand-mark"><div class="brand-type"><strong>NEXUS</strong><span>ARENA</span><small>MLBB COMPETITIVE</small></div></div>
+   <div class="side-caption">ПЛАТФОРМА</div>
+   <nav class="side-nav" aria-label="Главное меню">
+    <button data-go="arena" class="active"><span class="nicon">⌂</span>Главная</button>
+    <button data-go="lobby"><span class="nicon">⌕</span>Поиск матча</button>
+    <button data-go="clans"><span class="nicon">⬡</span>Кланы</button>
+    <button data-go="tournaments"><span class="nicon">♛</span>Турниры</button>
+    <button data-go="leaderboard"><span class="nicon">▥</span>Лидерборд</button>
+    <button data-go="matches"><span class="nicon">◷</span>Матчи</button>
+    <button data-go="profile"><span class="nicon">◉</span>Профиль</button>
+    <button data-go="feedback"><span class="nicon">✉</span>Отзывы и поддержка</button>
+    <button data-go="fund"><span class="nicon">♥</span>Развитие проекта</button>
+    <button data-go="review" class="staff-nav" hidden><span class="nicon">☑</span>Проверка матчей</button>
+    <button data-go="admin" class="admin-nav" hidden><span class="nicon">⚙</span>Разработчик</button>
+   </nav>
+   <div class="sidebar-bottom"><div class="online-dot"></div><span>NEXUS NETWORK</span><small>Серверный режим</small></div>
+  </aside>
+  <div class="stage">
+   <header class="topbar">
+    <div class="mobile-brand"><img src="/icons/nexus-mark.svg" alt="" width="35" height="35"><strong>NEXUS <span>ARENA</span></strong></div>
+    <div class="breadcrumbs" id="breadcrumb">NEXUS ARENA <span>/ ГЛАВНАЯ</span></div>
+    <div class="top-actions">
+     <button type="button" id="view-switch" data-action="switch-view" class="outline-btn view-switch" title="Переключить отображение ПК / телефон">▯ <span>Вид телефона</span></button>
+     <span class="season-tag">● SEASON 01</span>
+     <button id="header-user" type="button" data-go="profile" class="mini-user" hidden>◉</button>
+    </div>
+   </header>
+   <main id="main" class="page" tabindex="-1"><div class="loading">Подключение к NEXUS Arena…</div></main>
+  </div>
+  <nav id="mobile-nav" class="mobile-nav" aria-label="Мобильное меню">
+   <button data-go="arena" class="active"><span>⌂</span>Главная</button>
+   <button data-go="lobby"><span>⌕</span>Поиск</button>
+   <button data-go="clans"><span>⬡</span>Кланы</button>
+   <button data-go="tournaments"><span>♛</span>Турниры</button>
+   <button data-go="profile"><span>◉</span>Профиль</button>
+  </nav>
+ </div>
+ <dialog id="modal"><div id="modalContent"></div></dialog>
+ <div id="toast" role="status" aria-live="polite"></div>
+ <script defer src="/app.js?v=v100-modes-kd"></script>
+</body>
+</html>
