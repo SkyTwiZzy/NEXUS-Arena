@@ -1,4 +1,4 @@
-name: Build NEXUS Arena APK (Fixed)
+name: Build NEXUS Arena APK (Fixed v2)
 
 on:
   workflow_dispatch:
@@ -54,43 +54,78 @@ jobs:
               if [[ -f "$dir/lib/main.dart" ]]; then APP_DIR="${dir#./}"; fi
             done
             if [[ -z "$APP_DIR" ]]; then
-              echo "No Flutter mobile folder uploaded. Creating an Android client for NEXUS Arena..."
+              echo "No Flutter mobile folder uploaded. Generating an Android WebView client for NEXUS Arena..."
               APP_DIR="nexus_arena_mobile"
               flutter create --platforms=android --org com.nexusarena "$APP_DIR"
               (
                 cd "$APP_DIR"
                 flutter pub add webview_flutter webview_flutter_android image_picker url_launcher
               )
-              cat > "$APP_DIR/lib/main.dart" <<'DART'
-          import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
-          import 'package:webview_flutter_android/webview_flutter_android.dart';
-          import 'package:image_picker/image_picker.dart';
-          import 'package:url_launcher/url_launcher.dart';
+              printf '%s' 'aW1wb3J0ICdwYWNrYWdlOmZsdXR0ZXIvbWF0ZXJpYWwuZGFydCc7CmltcG9ydCAncGFja2FnZTp3ZWJ2aWV3X2ZsdXR0ZXIvd2Vidmlld19mbHV0dGVyLmRhcnQnOwppbXBvcnQgJ3BhY2thZ2U6d2Vidmlld19mbHV0dGVyX2FuZHJvaWQvd2Vidmlld19mbHV0dGVyX2FuZHJvaWQuZGFydCc7CmltcG9ydCAncGFja2FnZTppbWFnZV9waWNrZXIvaW1hZ2VfcGlja2VyLmRhcnQnOwppbXBvcnQgJ3BhY2thZ2U6dXJsX2xhdW5jaGVyL3VybF9sYXVuY2hlci5kYXJ0JzsKCmNvbnN0IFN0cmluZyBzaXRlVXJsID0gU3RyaW5nLmZyb21FbnZpcm9ubWVudCgKICAnQVJFTkFfVVJMJywgZGVmYXVsdFZhbHVlOiAnaHR0cHM6Ly9uZXh1cy1hcmVuYS1uZngxLm9ucmVuZGVyLmNvbS8nKTsKCnZvaWQgbWFpbigpIHsgV2lkZ2V0c0ZsdXR0ZXJCaW5kaW5nLmVuc3VyZUluaXRpYWxpemVkKCk7IHJ1bkFwcChjb25zdCBOZXh1c0FwcCgpKTsgfQoKY2xhc3MgTmV4dXNBcHAgZXh0ZW5kcyBTdGF0ZWxlc3NXaWRnZXQgewogIGNvbnN0IE5leHVzQXBwKHtzdXBlci5rZXl9KTsKICBAb3ZlcnJpZGUKICBXaWRnZXQgYnVpbGQoQnVpbGRDb250ZXh0IGNvbnRleHQpID0+IE1hdGVyaWFsQXBwKAogICAgdGl0bGU6ICdORVhVUyBBcmVuYScsCiAgICBkZWJ1Z1Nob3dDaGVja2VkTW9kZUJhbm5lcjogZmFsc2UsCiAgICB0aGVtZTogVGhlbWVEYXRhLmRhcmsodXNlTWF0ZXJpYWwzOiB0cnVlKSwKICAgIGhvbWU6IGNvbnN0IE5leHVzSG9tZSgpLAogICk7Cn0KCmNsYXNzIE5leHVzSG9tZSBleHRlbmRzIFN0YXRlZnVsV2lkZ2V0IHsKICBjb25zdCBOZXh1c0hvbWUoe3N1cGVyLmtleX0pOwogIEBvdmVycmlkZQogIFN0YXRlPE5leHVzSG9tZT4gY3JlYXRlU3RhdGUoKSA9PiBfTmV4dXNIb21lU3RhdGUoKTsKfQoKY2xhc3MgX05leHVzSG9tZVN0YXRlIGV4dGVuZHMgU3RhdGU8TmV4dXNIb21lPiB7CiAgbGF0ZSBmaW5hbCBXZWJWaWV3Q29udHJvbGxlciB3ZWI7CiAgYm9vbCBsb2FkaW5nID0gdHJ1ZTsKICBTdHJpbmc/IGZhaWx1cmU7CiAgQG92ZXJyaWRlCiAgdm9pZCBpbml0U3RhdGUoKSB7CiAgICBzdXBlci5pbml0U3RhdGUoKTsKICAgIGZpbmFsIGJhc2UgPSBVcmkucGFyc2Uoc2l0ZVVybCkub3JpZ2luOwogICAgd2ViID0gV2ViVmlld0NvbnRyb2xsZXIoKQogICAgICAuLnNldEphdmFTY3JpcHRNb2RlKEphdmFTY3JpcHRNb2RlLnVucmVzdHJpY3RlZCkKICAgICAgLi5zZXRCYWNrZ3JvdW5kQ29sb3IoY29uc3QgQ29sb3IoMHhGRjBEMDkxOCkpCiAgICAgIC4uc2V0TmF2aWdhdGlvbkRlbGVnYXRlKE5hdmlnYXRpb25EZWxlZ2F0ZSgKICAgICAgICBvblBhZ2VTdGFydGVkOiAoXykgeyBpZiAobW91bnRlZCkgc2V0U3RhdGUoKCkgeyBsb2FkaW5nPXRydWU7IGZhaWx1cmU9bnVsbDsgfSk7IH0sCiAgICAgICAgb25QYWdlRmluaXNoZWQ6IChfKSB7IGlmIChtb3VudGVkKSBzZXRTdGF0ZSgoKSA9PiBsb2FkaW5nPWZhbHNlKTsgfSwKICAgICAgICBvbldlYlJlc291cmNlRXJyb3I6IChlcnJvcikgewogICAgICAgICAgaWYgKGVycm9yLmlzRm9yTWFpbkZyYW1lID09IHRydWUgJiYgbW91bnRlZCkgewogICAgICAgICAgICBzZXRTdGF0ZSgoKSB7IGxvYWRpbmc9ZmFsc2U7IGZhaWx1cmU9ZXJyb3IuZGVzY3JpcHRpb247IH0pOwogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgb25OYXZpZ2F0aW9uUmVxdWVzdDogKG5hdmlnYXRpb24pIHsKICAgICAgICAgIGZpbmFsIHVyaSA9IFVyaS50cnlQYXJzZShuYXZpZ2F0aW9uLnVybCk7CiAgICAgICAgICBpZiAodXJpID09IG51bGwpIHJldHVybiBOYXZpZ2F0aW9uRGVjaXNpb24ucHJldmVudDsKICAgICAgICAgIGlmICh1cmkub3JpZ2luID09IGJhc2UpIHJldHVybiBOYXZpZ2F0aW9uRGVjaXNpb24ubmF2aWdhdGU7CiAgICAgICAgICBpZiAodXJpLnNjaGVtZSA9PSAnaHR0cHMnKSB7CiAgICAgICAgICAgIGxhdW5jaFVybCh1cmksIG1vZGU6IExhdW5jaE1vZGUuZXh0ZXJuYWxBcHBsaWNhdGlvbik7CiAgICAgICAgICB9CiAgICAgICAgICByZXR1cm4gTmF2aWdhdGlvbkRlY2lzaW9uLnByZXZlbnQ7CiAgICAgICAgfSwKICAgICAgKSkKICAgICAgLi5sb2FkUmVxdWVzdChVcmkucGFyc2Uoc2l0ZVVybCkpOwogICAgaWYgKHdlYi5wbGF0Zm9ybSBpcyBBbmRyb2lkV2ViVmlld0NvbnRyb2xsZXIpIHsKICAgICAgKHdlYi5wbGF0Zm9ybSBhcyBBbmRyb2lkV2ViVmlld0NvbnRyb2xsZXIpLnNldE9uU2hvd0ZpbGVTZWxlY3RvcigocGFyYW1zKSBhc3luYyB7CiAgICAgICAgZmluYWwgZmlsZSA9IGF3YWl0IEltYWdlUGlja2VyKCkucGlja0ltYWdlKHNvdXJjZTogSW1hZ2VTb3VyY2UuZ2FsbGVyeSk7CiAgICAgICAgaWYgKGZpbGUgPT0gbnVsbCkgcmV0dXJuIDxTdHJpbmc+W107CiAgICAgICAgcmV0dXJuIDxTdHJpbmc+W1VyaS5maWxlKGZpbGUucGF0aCkudG9TdHJpbmcoKV07CiAgICAgIH0pOwogICAgfQogIH0KICBAb3ZlcnJpZGUKICBXaWRnZXQgYnVpbGQoQnVpbGRDb250ZXh0IGNvbnRleHQpID0+IFBvcFNjb3BlKAogICAgY2FuUG9wOiBmYWxzZSwKICAgIG9uUG9wSW52b2tlZFdpdGhSZXN1bHQ6IChkaWRQb3AsIHJlc3VsdCkgYXN5bmMgewogICAgICBpZiAoIWRpZFBvcCAmJiBhd2FpdCB3ZWIuY2FuR29CYWNrKCkpIHsgYXdhaXQgd2ViLmdvQmFjaygpOyB9CiAgICB9LAogICAgY2hpbGQ6IFNjYWZmb2xkKAogICAgICBib2R5OiBTYWZlQXJlYShjaGlsZDogU3RhY2soY2hpbGRyZW46IFsKICAgICAgICBpZiAoZmFpbHVyZSAhPSBudWxsKSBDZW50ZXIoY2hpbGQ6IFBhZGRpbmcoCiAgICAgICAgICBwYWRkaW5nOiBjb25zdCBFZGdlSW5zZXRzLmFsbCgyNCksCiAgICAgICAgICBjaGlsZDogQ29sdW1uKG1haW5BeGlzU2l6ZTogTWFpbkF4aXNTaXplLm1pbiwgY2hpbGRyZW46IFsKICAgICAgICAgICAgY29uc3QgSWNvbihJY29ucy53aWZpX29mZiwgc2l6ZTogNTYsIGNvbG9yOiBDb2xvcigweEZGQkI5MUZGKSksCiAgICAgICAgICAgIGNvbnN0IFNpemVkQm94KGhlaWdodDogMTQpLAogICAgICAgICAgICBUZXh0KCfQndC1INGD0LTQsNC70L7RgdGMINC+0YLQutGA0YvRgtGMIE5FWFVTIEFyZW5hOiAkZmFpbHVyZScsIHRleHRBbGlnbjogVGV4dEFsaWduLmNlbnRlciksCiAgICAgICAgICAgIGNvbnN0IFNpemVkQm94KGhlaWdodDogMTYpLAogICAgICAgICAgICBFbGV2YXRlZEJ1dHRvbihvblByZXNzZWQ6ICgpID0+IHdlYi5sb2FkUmVxdWVzdChVcmkucGFyc2Uoc2l0ZVVybCkpLAogICAgICAgICAgICAgIGNoaWxkOiBjb25zdCBUZXh0KCfQn9C+0LLRgtC+0YDQuNGC0YwnKSksCiAgICAgICAgICBdKSwKICAgICAgICApKSBlbHNlIFdlYlZpZXdXaWRnZXQoY29udHJvbGxlcjogd2ViKSwKICAgICAgICBpZiAobG9hZGluZykgY29uc3QgTGluZWFyUHJvZ3Jlc3NJbmRpY2F0b3IoY29sb3I6IENvbG9yKDB4RkY5OTU5RjgpKSwKICAgICAgXSkpLAogICAgKSwKICApOwp9Cg==' | base64 --decode > "$APP_DIR/lib/main.dart"
+            fi
+          fi
+          echo "Flutter directory: $APP_DIR"
+          echo "APP_DIR=$APP_DIR" >> "$GITHUB_ENV"
 
-          const String siteUrl = String.fromEnvironment(
-            'ARENA_URL', defaultValue: 'https://nexus-arena-nfx1.onrender.com/');
+      - name: Create Android app files and download dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$APP_DIR"
+          flutter create --platforms=android --org com.nexusarena .
+          flutter pub get
 
-          void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const NexusApp()); }
+      - name: Configure app icon, name, and internet permission
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, pathlib, re, shutil
+          root = pathlib.Path.cwd()
+          app = root / os.environ['APP_DIR']
+          manifest = app / 'android/app/src/main/AndroidManifest.xml'
+          text = manifest.read_text(encoding='utf-8')
+          text = re.sub(r'android:label="[^"]*"', 'android:label="NEXUS Arena"', text, count=1)
+          if 'android.permission.INTERNET' not in text:
+              text = text.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
+          manifest.write_text(text, encoding='utf-8')
 
-          class NexusApp extends StatelessWidget {
-            const NexusApp({super.key});
-            @override
-            Widget build(BuildContext context) => MaterialApp(
-              title: 'NEXUS Arena',
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData.dark(useMaterial3: true),
-              home: const NexusHome(),
-            );
-          }
+          icons = list(root.glob('**/assets/nexus_icon.png'))
+          icons += list(root.glob('**/web/icons/icon-192.png'))
+          icons += list(root.glob('**/mobile/assets/nexus_icon.png'))
+          icons += list(root.glob('**/assets/nexus_icon.png'))
+          if icons:
+              source = icons[0]
+              print('Using NEXUS app icon:', source)
+              for density in ('mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'):
+                  target = app / f'android/app/src/main/res/mipmap-{density}/ic_launcher.png'
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(source, target)
+          else:
+              print('WARNING: NEXUS logo not found in repository. Default Flutter launcher icon will be used.')
+          print('Android app configured.')
+          PY
 
-          class NexusHome extends StatefulWidget {
-            const NexusHome({super.key});
-            @override
-            State<NexusHome> createState() => _NexusHomeState();
-          }
+      - name: Build installable NEXUS Arena APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$APP_DIR"
+          flutter build apk --release --dart-define='ARENA_URL=https://nexus-arena-nfx1.onrender.com/'
 
-          class _NexusHomeState extends State<NexusHome> {
-            late final WebViewController web;
-            bool loading = true;
-            String? failure;
+      - name: Verify and upload APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp "$APP_DIR/build/app/outputs/flutter-apk/app-release.apk" release/NEXUS_Arena_Android.apk
+          test -s release/NEXUS_Arena_Android.apk
+          sha256sum release/NEXUS_Arena_Android.apk
+
+      - name: Downloadable APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS_Arena_Android_APK
+          path: release/NEXUS_Arena_Android.apk
+          if-no-files-found: error
+          retention-days: 30
