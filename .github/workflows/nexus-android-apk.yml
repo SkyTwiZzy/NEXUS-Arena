@@ -1,67 +1,96 @@
-name: Build NEXUS Arena APK
+name: Build NEXUS Arena APK (Fixed)
 
 on:
   workflow_dispatch:
+    inputs:
+      app_directory:
+        description: "Optional: Flutter folder, for example NEXUS_Arena_v1_1_Public/mobile (leave blank for automatic detection)"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   android:
-    name: Android APK
+    name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
-      - name: Get NEXUS Arena source
+      - name: Download GitHub repository
         uses: actions/checkout@v4
 
-      - name: Java 17 for Android
+      - name: Configure Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Flutter and Android tooling
+      - name: Configure Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Check that app sources exist
+      - name: Find Android application or create WebView shell
+        shell: bash
+        env:
+          REQUESTED_APP_DIR: ${{ inputs.app_directory }}
         run: |
-          test -f NEXUS_Arena_v1_0/mobile/pubspec.yaml
-          test -f NEXUS_Arena_v1_0/mobile/lib/main.dart
-          test -f NEXUS_Arena_v1_0/tools/install_android_icons.py
+          set -euo pipefail
+          echo "Repository Flutter projects:"
+          find . -type f -name pubspec.yaml -not -path './.git/*' -print || true
+          if [[ -n "$REQUESTED_APP_DIR" ]]; then
+            APP_DIR="${REQUESTED_APP_DIR#./}"
+            if [[ ! -f "$APP_DIR/pubspec.yaml" || ! -f "$APP_DIR/lib/main.dart" ]]; then
+              echo "::error::Flutter files not found in $APP_DIR. Leave app_directory empty for automatic detection."
+              exit 1
+            fi
+          else
+            mapfile -t CANDIDATES < <(find . -type f -path '*/mobile/pubspec.yaml' -not -path './.git/*' | sort -V)
+            APP_DIR=''
+            for file in "${CANDIDATES[@]}"; do
+              dir="${file%/pubspec.yaml}"
+              if [[ -f "$dir/lib/main.dart" ]]; then APP_DIR="${dir#./}"; fi
+            done
+            if [[ -z "$APP_DIR" ]]; then
+              echo "No Flutter mobile folder uploaded. Creating an Android client for NEXUS Arena..."
+              APP_DIR="nexus_arena_mobile"
+              flutter create --platforms=android --org com.nexusarena "$APP_DIR"
+              (
+                cd "$APP_DIR"
+                flutter pub add webview_flutter webview_flutter_android image_picker url_launcher
+              )
+              cat > "$APP_DIR/lib/main.dart" <<'DART'
+          import 'package:flutter/material.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
+          import 'package:webview_flutter_android/webview_flutter_android.dart';
+          import 'package:image_picker/image_picker.dart';
+          import 'package:url_launcher/url_launcher.dart';
 
-      - name: Create Android native files
-        working-directory: NEXUS_Arena_v1_0/mobile
-        run: flutter create --platforms=android --org com.nexusarena .
+          const String siteUrl = String.fromEnvironment(
+            'ARENA_URL', defaultValue: 'https://nexus-arena-nfx1.onrender.com/');
 
-      - name: Install dependencies
-        working-directory: NEXUS_Arena_v1_0/mobile
-        run: flutter pub get
+          void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const NexusApp()); }
 
-      - name: Install icon and internet permission
-        run: |
-          python3 NEXUS_Arena_v1_0/tools/install_android_icons.py
-          sed -i 's/android:label="nexus_arena"/android:label="NEXUS Arena"/' NEXUS_Arena_v1_0/mobile/android/app/src/main/AndroidManifest.xml
-          grep 'android.permission.INTERNET' NEXUS_Arena_v1_0/mobile/android/app/src/main/AndroidManifest.xml
+          class NexusApp extends StatelessWidget {
+            const NexusApp({super.key});
+            @override
+            Widget build(BuildContext context) => MaterialApp(
+              title: 'NEXUS Arena',
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData.dark(useMaterial3: true),
+              home: const NexusHome(),
+            );
+          }
 
-      - name: Build installable APK connected to the public site
-        working-directory: NEXUS_Arena_v1_0/mobile
-        run: flutter build apk --release --dart-define=ARENA_URL=https://nexus-arena-nfx1.onrender.com/
+          class NexusHome extends StatefulWidget {
+            const NexusHome({super.key});
+            @override
+            State<NexusHome> createState() => _NexusHomeState();
+          }
 
-      - name: Prepare downloadable APK
-        run: |
-          mkdir -p release
-          cp NEXUS_Arena_v1_0/mobile/build/app/outputs/flutter-apk/app-release.apk release/NEXUS_Arena_Android.apk
-          test -s release/NEXUS_Arena_Android.apk
-          sha256sum release/NEXUS_Arena_Android.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NEXUS_Arena_Android_APK
-          path: release/NEXUS_Arena_Android.apk
-          if-no-files-found: error
-          retention-days: 30
+          class _NexusHomeState extends State<NexusHome> {
+            late final WebViewController web;
+            bool loading = true;
+            String? failure;
