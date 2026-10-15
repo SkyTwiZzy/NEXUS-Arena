@@ -45,6 +45,56 @@ LOGIN_ATTEMPTS = {}
 LOGIN_LOCK = Lock()
 
 
+# Tournament-free quarterly competitive seasons. Matches retain their lifetime ELO.
+# The server defines the calendar, so every device sees the same season.
+# UTC+05:00 is used for Kazakhstan (including Oral/Uralsk) in 2026.
+SEASON_ZONE = timezone(timedelta(hours=5))
+SEASON_FIRST_YEAR = 2026
+SEASON_FIRST_QUARTER = 3  # October 2026: Season 01
+
+
+def season_metadata(number: int, reference: datetime | None = None) -> dict:
+    if number < 1:
+        raise ValueError('Season number must be positive')
+    year, quarter = divmod(SEASON_FIRST_YEAR * 4 + SEASON_FIRST_QUARTER + number - 1, 4)
+    month = quarter * 3 + 1
+    begins = datetime(year, month, 1, tzinfo=SEASON_ZONE)
+    next_year, next_quarter = divmod(year * 4 + quarter + 1, 4)
+    ends_exclusive = datetime(next_year, next_quarter * 3 + 1, 1, tzinfo=SEASON_ZONE)
+    current = reference or datetime.now(SEASON_ZONE)
+    title = f'SEASON {number:02d}'
+    return {
+        'number': number, 'title': title,
+        'starts_at': int(begins.timestamp()),
+        'ends_at': int(ends_exclusive.timestamp()),
+        'start_date': begins.strftime('%Y-%m-%d'),
+        'end_date': (ends_exclusive - timedelta(days=1)).strftime('%Y-%m-%d'),
+        'next_start_date': ends_exclusive.strftime('%Y-%m-%d'),
+        'time_zone': '+05:00',
+        'status': 'upcoming' if current < begins else 'ended' if current >= ends_exclusive else 'active',
+        'seconds_left': max(0, int((ends_exclusive - current).total_seconds())),
+    }
+
+
+def season_number(reference: datetime | None = None) -> int:
+    current = (reference or datetime.now(SEASON_ZONE)).astimezone(SEASON_ZONE)
+    quarter_index = current.year * 4 + (current.month - 1) // 3
+    return max(1, quarter_index - (SEASON_FIRST_YEAR * 4 + SEASON_FIRST_QUARTER) + 1)
+
+
+def season_catalog(reference: datetime | None = None) -> dict:
+    moment = (reference or datetime.now(SEASON_ZONE)).astimezone(SEASON_ZONE)
+    number = season_number(moment)
+    current = season_metadata(number, moment)
+    return {
+        'current': current,
+        'next': season_metadata(number + 1, moment),
+        'history': [season_metadata(i, moment) for i in range(max(1, number - 7), number + 1)][::-1],
+        'rule': 'Каждый сезон длится три календарных месяца: октябрь–декабрь, январь–март, апрель–июнь, июль–сентябрь.',
+        'rating_policy': 'Ранги и ELO не сбрасываются при смене сезона.',
+    }
+
+
 def now(): return int(time.time())
 
 
@@ -330,7 +380,7 @@ def initialize():
                             (admin_email,password_hash(admin_pass),os.getenv('ADMIN_NICK','NEXUS_OWNER'),1,1,'OWNER',now()))
 
 
-app = FastAPI(title='NEXUS Arena API', version='1.1.0', docs_url=None, redoc_url=None)
+app = FastAPI(title='NEXUS Arena API', version='1.3.0', docs_url=None, redoc_url=None)
 initialize()
 
 
@@ -1599,8 +1649,63 @@ def delete_account(form:DeleteAccount,request:Request):
     return resp
 
 
+
+@app.get('/api/seasons')
+def seasons():
+    return season_catalog()
+
+
+@app.get('/api/seasons/me')
+def seasons_me(request: Request):
+    active = season_catalog()['current']
+    with db() as con:
+        user = user_for(request, con)
+        results = rows(con, '''
+            SELECT m.mode,
+                   COUNT(*) AS played,
+                   COALESCE(SUM(CASE WHEN mm.side = d.winning_side THEN 1 ELSE 0 END),0) AS wins,
+                   COALESCE(SUM(CASE WHEN mm.side <> d.winning_side THEN 1 ELSE 0 END),0) AS losses
+              FROM match_members mm
+              JOIN matches m ON m.id=mm.match_id AND m.status='COMPLETED'
+              JOIN match_decisions d ON d.match_id=m.id
+             WHERE mm.user_id=? AND d.reviewed_at>=? AND d.reviewed_at<?
+          GROUP BY m.mode
+        ''', (user['id'], active['starts_at'], active['ends_at']))
+    by_mode = {mode: {'played': 0, 'wins': 0, 'losses': 0} for mode in GAME_MODES}
+    for row in results:
+        if row['mode'] in by_mode:
+            by_mode[row['mode']] = {key: int(row[key]) for key in ('played', 'wins', 'losses')}
+    return {'season': active, 'modes': by_mode}
+
+
+@app.get('/api/seasons/leaderboard')
+def seasons_leaderboard(request: Request, mode: str = '5v5', season: int | None = None):
+    mode_size(mode)
+    number = season_number() if season is None else season
+    if number < 1 or number > season_number():
+        fail(400, 'Такой сезон ещё не начался')
+    bounds = season_metadata(number)
+    with db() as con:
+        user_for(request, con)
+        return rows(con, '''
+            SELECT u.id, u.nickname, u.avatar_updated_at,
+                   COUNT(*) AS played,
+                   SUM(CASE WHEN mm.side=d.winning_side THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN mm.side<>d.winning_side THEN 1 ELSE 0 END) AS losses
+              FROM match_members mm
+              JOIN users u ON u.id=mm.user_id
+              JOIN matches m ON m.id=mm.match_id AND m.status='COMPLETED' AND m.mode=?
+              JOIN match_decisions d ON d.match_id=m.id
+             WHERE d.reviewed_at>=? AND d.reviewed_at<?
+                   AND u.nickname IS NOT NULL AND u.is_banned=0
+          GROUP BY u.id
+          ORDER BY wins DESC, played DESC, u.nickname ASC
+             LIMIT 30
+        ''', (mode, bounds['starts_at'], bounds['ends_at']))
+
+
 @app.get('/api/status')
-def status(): return {'service':'NEXUS Arena','online':True,'version':'1.1'}
+def status(): return {'service':'NEXUS Arena','online':True,'version':'1.3'}
 
 
 @app.get('/terms')
