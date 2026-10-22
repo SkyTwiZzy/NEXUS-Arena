@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#090912">
+  <meta name="theme-color" content="#070c0b">
   <meta name="description" content="NEXUS Arena — соревновательная платформа Mobile Legends: Bang Bang: рейтинги, кланы, турниры и лобби 5×5.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icons/nexus-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=v130-seasons">
-  <title>NEXUS Arena 1.3 — MLBB Competitive</title>
+  <link rel="stylesheet" href="/styles.css?v=v140-pro">
+  <title>NEXUS Arena 1.4 PRO — MLBB Competitive</title>
 </head>
-<body class="pre-auth">
+<body class="pre-auth pro-style">
  <div id="app" class="layout">
   <aside class="sidebar" id="sidebar">
    <div class="brand-block"><img src="/icons/nexus-mark.svg" alt="Логотип NEXUS" class="brand-mark"><div class="brand-type"><strong>NEXUS</strong><span>ARENA</span><small>MLBB COMPETITIVE</small></div></div>
@@ -20,6 +20,7 @@
     <button data-go="lobby"><span class="nicon">⌕</span>Поиск матча</button>
     <button data-go="clans"><span class="nicon">⬡</span>Кланы</button>
     <button data-go="tournaments"><span class="nicon">♛</span>Турниры</button>
+    <button data-go="analytics"><span class="nicon">◫</span>Про-статистика</button>
     <button data-go="leaderboard"><span class="nicon">▥</span>Лидерборд</button>
     <button data-go="seasons"><span class="nicon">◷</span>Сезоны</button>
     <button data-go="matches"><span class="nicon">◷</span>Матчи</button>
@@ -36,6 +37,7 @@
     <div class="mobile-brand"><img src="/icons/nexus-mark.svg" alt="" width="35" height="35"><strong>NEXUS <span>ARENA</span></strong></div>
     <div class="breadcrumbs" id="breadcrumb">NEXUS ARENA <span>/ ГЛАВНАЯ</span></div>
     <div class="top-actions">
+     <button type="button" id="style-switch" data-action="switch-style" class="outline-btn style-switch" title="Переключить стиль NEXUS">◈ Классика</button>
      <button type="button" id="view-switch" data-action="switch-view" class="outline-btn view-switch" title="Переключить отображение ПК / телефон">▯ <span>Вид телефона</span></button>
      <button type="button" data-go="seasons" class="season-tag" title="Календарь сезонов">● SEASON 01</button>
      <button id="header-user" type="button" data-go="profile" class="mini-user" hidden>◉</button>
@@ -48,11 +50,12 @@
    <button data-go="lobby"><span>⌕</span>Поиск</button>
    <button data-go="clans"><span>⬡</span>Кланы</button>
    <button data-go="tournaments"><span>♛</span>Турниры</button>
+   <button data-go="analytics"><span>◫</span>Статистика</button>
    <button data-go="profile"><span>◉</span>Профиль</button>
   </nav>
  </div>
  <dialog id="modal"><div id="modalContent"></div></dialog>
  <div id="toast" role="status" aria-live="polite"></div>
- <script defer src="/app.js?v=v130-seasons"></script>
+ <script defer src="/app.js?v=v140-pro"></script>
 </body>
 </html>

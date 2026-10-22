@@ -643,6 +643,57 @@ def me(request:Request):
     with db() as con: return user_for(request,con,True)
 
 
+@app.get('/api/analytics/me')
+def player_analytics(request: Request):
+    """Read-only competitive insights derived solely from moderator-approved matches.
+
+    Do not invent hero picks, damage or gold: those require an authorized MLBB feed
+    (or dedicated, clearly-labelled manual statistics fields) and aren't stored here.
+    """
+    with db() as con:
+        user = user_for(request, con)
+        items = rows(con, """SELECT m.id, m.mode, m.created_at, m.winning_side,
+                    mm.side, ps.kills, ps.deaths, ps.assists
+                  FROM match_members mm
+                  JOIN matches m ON m.id=mm.match_id
+                  LEFT JOIN match_player_stats ps
+                    ON ps.match_id=m.id AND ps.user_id=mm.user_id
+                  WHERE mm.user_id=? AND m.status='COMPLETED'
+                  ORDER BY m.id DESC""", (user['id'],))
+        modes = {}
+        for mode in GAME_MODES:
+            subset = [m for m in items if (m.get('mode') or '5v5') == mode]
+            recorded = [m for m in subset if m['kills'] is not None]
+            kills = sum(int(m['kills']) for m in recorded)
+            deaths = sum(int(m['deaths']) for m in recorded)
+            assists = sum(int(m['assists']) for m in recorded)
+            wins = sum(m['side'] == m['winning_side'] for m in subset)
+            modes[mode] = {
+                'matches': len(subset), 'wins': wins, 'losses': len(subset)-wins,
+                'win_rate': round(100*wins/len(subset), 1) if subset else None,
+                'kda_matches': len(recorded),
+                'kills': kills, 'deaths': deaths, 'assists': assists,
+                'kd': round(kills/deaths, 2) if deaths else None,
+                'elo': user['ratings'][mode]['elo'],
+                'rank': user['ratings'][mode]['rank'],
+            }
+        history = [{
+            'id': m['id'], 'mode': m.get('mode') or '5v5',
+            'created_at': m['created_at'],
+            'result': 'WIN' if m['side'] == m['winning_side'] else 'LOSS',
+            'elo_delta': 25 if m['side'] == m['winning_side'] else -25,
+            'kills': m['kills'], 'deaths': m['deaths'], 'assists': m['assists'],
+            'stats_recorded': m['kills'] is not None,
+        } for m in items[:30]]
+        return {
+            'total_confirmed_matches': len(items),
+            'modes': modes,
+            'history': history,
+            'hero_stats_available': False,
+            'data_source': 'Подтверждённые администрацией результаты NEXUS Arena',
+        }
+
+
 @app.post('/api/me/change-password')
 def change_password(form:PasswordChange,request:Request):
     if not 12<=len(form.new_password)<=128 or form.new_password!=form.confirm:
