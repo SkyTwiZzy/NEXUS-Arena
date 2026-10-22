@@ -24,6 +24,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+try:
+    from .heroes import HEROES, HERO_BY_NAME
+except ImportError:  # direct `import app` used by local tests
+    from heroes import HEROES, HERO_BY_NAME
+
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / 'web'
 DB_FILE = Path(os.getenv('NEXUS_DB', str(ROOT / 'server' / 'arena.sqlite3')))
@@ -343,6 +348,10 @@ def initialize():
           reviewer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
           winning_side INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '', reviewed_at INTEGER NOT NULL);
         """)
+        # Database migration: keep existing K/D/A rows and all historical matches.
+        if 'hero' not in {column['name'] for column in con.execute('PRAGMA table_info(match_player_stats)')}:
+            con.execute('ALTER TABLE match_player_stats ADD COLUMN hero TEXT')
+        con.execute('CREATE INDEX IF NOT EXISTS match_player_stats_hero_idx ON match_player_stats(user_id,hero)')
         con.executescript('''
         CREATE TABLE IF NOT EXISTS role_audit(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -380,7 +389,7 @@ def initialize():
                             (admin_email,password_hash(admin_pass),os.getenv('ADMIN_NICK','NEXUS_OWNER'),1,1,'OWNER',now()))
 
 
-app = FastAPI(title='NEXUS Arena API', version='1.3.0', docs_url=None, redoc_url=None)
+app = FastAPI(title='NEXUS Arena API', version='1.5.0', docs_url=None, redoc_url=None)
 initialize()
 
 
@@ -482,6 +491,8 @@ class PlayerKDA(BaseModel):
     kills: int = Field(ge=0,le=999)
     deaths: int = Field(ge=0,le=999)
     assists: int = Field(ge=0,le=999)
+    # None means preserve the prior hero, "" clears it, otherwise validate.
+    hero: str | None = None
 
 class ModeratorToggle(BaseModel):
     enabled: bool
@@ -653,7 +664,7 @@ def player_analytics(request: Request):
     with db() as con:
         user = user_for(request, con)
         items = rows(con, """SELECT m.id, m.mode, m.created_at, m.winning_side,
-                    mm.side, ps.kills, ps.deaths, ps.assists
+                    mm.side, ps.kills, ps.deaths, ps.assists, ps.hero
                   FROM match_members mm
                   JOIN matches m ON m.id=mm.match_id
                   LEFT JOIN match_player_stats ps
@@ -682,16 +693,74 @@ def player_analytics(request: Request):
             'created_at': m['created_at'],
             'result': 'WIN' if m['side'] == m['winning_side'] else 'LOSS',
             'elo_delta': 25 if m['side'] == m['winning_side'] else -25,
-            'kills': m['kills'], 'deaths': m['deaths'], 'assists': m['assists'],
+            'kills': m['kills'], 'deaths': m['deaths'], 'assists': m['assists'], 'hero': m['hero'],
             'stats_recorded': m['kills'] is not None,
         } for m in items[:30]]
         return {
             'total_confirmed_matches': len(items),
             'modes': modes,
             'history': history,
-            'hero_stats_available': False,
+            'hero_stats_available': any(item['hero'] for item in rows(con, '''SELECT ps.hero FROM match_player_stats ps JOIN matches m ON m.id=ps.match_id WHERE ps.user_id=? AND ps.hero IS NOT NULL AND m.status='COMPLETED' LIMIT 1''', (user['id'],))),
             'data_source': 'Подтверждённые администрацией результаты NEXUS Arena',
         }
+
+
+def player_hero_summary(con, user_id: int) -> dict:
+    """All heroes are visible; statistics only count moderator-confirmed NEXUS matches."""
+    picked = rows(con, """SELECT ps.hero, m.mode, mm.side, m.winning_side,
+                       ps.kills, ps.deaths, ps.assists
+        FROM match_player_stats ps
+        JOIN matches m ON m.id=ps.match_id
+        JOIN match_members mm ON mm.match_id=ps.match_id AND mm.user_id=ps.user_id
+        WHERE ps.user_id=? AND m.status='COMPLETED' AND ps.hero IS NOT NULL""", (user_id,))
+    result = []
+    for hero in HEROES:
+        played = [row for row in picked if row['hero'] == hero['name']]
+        per_mode = {}
+        for mode in GAME_MODES:
+            group = [row for row in played if (row['mode'] or '5v5') == mode]
+            wins = sum(row['side'] == row['winning_side'] for row in group)
+            per_mode[mode] = {
+                'matches':len(group), 'wins':wins, 'losses':len(group)-wins,
+                'win_rate':round(100*wins/len(group), 1) if group else None,
+                'kills':sum(row['kills'] for row in group),
+                'deaths':sum(row['deaths'] for row in group),
+                'assists':sum(row['assists'] for row in group),
+            }
+        wins = sum(row['side'] == row['winning_side'] for row in played)
+        result.append({**hero, 'matches':len(played), 'wins':wins,
+                       'losses':len(played)-wins,
+                       'win_rate':round(100*wins/len(played), 1) if played else None,
+                       'kills':sum(row['kills'] for row in played),
+                       'deaths':sum(row['deaths'] for row in played),
+                       'assists':sum(row['assists'] for row in played),
+                       'modes':per_mode})
+    return {'heroes':result,
+            'heroes_played':sum(item['matches']>0 for item in result),
+            'catalog_size':len(HEROES),
+            'source':'Только подтверждённые администрацией матчи NEXUS Arena'}
+
+
+@app.get('/api/heroes')
+def hero_catalog(request: Request):
+    with db() as con: user_for(request, con)
+    return {'heroes':HEROES, 'count':len(HEROES)}
+
+
+@app.get('/api/heroes/me')
+def my_heroes(request: Request):
+    with db() as con:
+        user = user_for(request, con)
+        return player_hero_summary(con, user['id'])
+
+
+@app.get('/api/users/{user_id}/heroes')
+def user_heroes(user_id: int, request: Request):
+    with db() as con:
+        user_for(request, con)
+        if not record(con, 'SELECT id FROM users WHERE id=?', (user_id,)):
+            fail(404, 'Профиль не найден')
+        return player_hero_summary(con, user_id)
 
 
 @app.post('/api/me/change-password')
@@ -1073,7 +1142,7 @@ def matches(request:Request):
             m['ready_count']=sum(int(p['ready']) for p in m['players'])
             m['host']=record(con,'SELECT nickname,mlbb_id,server_id FROM users WHERE id=?',(m['host_user_id'],)) if m['host_user_id'] else None
             m['evidence']=rows(con,'SELECT side,captain_id,winning_side,submitted_at FROM match_evidence WHERE match_id=? ORDER BY side',(m['id'],))
-            m['kda']=rows(con,'SELECT user_id,kills,deaths,assists FROM match_player_stats WHERE match_id=? ORDER BY user_id',(m['id'],))
+            m['kda']=rows(con,'SELECT user_id,kills,deaths,assists,hero FROM match_player_stats WHERE match_id=? ORDER BY user_id',(m['id'],))
             m['review']=record(con,'SELECT winning_side,note,reviewed_at FROM match_decisions WHERE match_id=?',(m['id'],))
         return mine
 
@@ -1453,12 +1522,20 @@ def staff_player_kda(match_id:int,user_id:int,form:PlayerKDA,request:Request):
         if match['status'] not in ('PENDING','REVIEW','DISPUTED','COMPLETED'):fail(409,'Матч не проходил: статистика недоступна')
         if not record(con,'SELECT 1 FROM match_members WHERE match_id=? AND user_id=?',(match_id,user_id)):
             fail(404,'Игрок не участвовал в этом матче')
-        before=record(con,'SELECT kills,deaths,assists FROM match_player_stats WHERE match_id=? AND user_id=?',(match_id,user_id))
-        new={'kills':form.kills,'deaths':form.deaths,'assists':form.assists}
-        con.execute('''INSERT INTO match_player_stats(match_id,user_id,kills,deaths,assists,updated_by,updated_at)
-                     VALUES(?,?,?,?,?,?,?) ON CONFLICT(match_id,user_id) DO UPDATE SET kills=excluded.kills,
-                     deaths=excluded.deaths,assists=excluded.assists,updated_by=excluded.updated_by,updated_at=excluded.updated_at''',
-                    (match_id,user_id,form.kills,form.deaths,form.assists,staff['id'],now()))
+        before=record(con,'SELECT kills,deaths,assists,hero FROM match_player_stats WHERE match_id=? AND user_id=?',(match_id,user_id))
+        # Keep previously selected heroes when legacy clients update KDA without a hero field.
+        selected = before['hero'] if form.hero is None and before else None
+        if form.hero is not None:
+            key = form.hero.strip().casefold()
+            if key and key not in HERO_BY_NAME:
+                fail(400,'Неизвестный герой MLBB')
+            selected = HERO_BY_NAME[key]['name'] if key else None
+        new={'kills':form.kills,'deaths':form.deaths,'assists':form.assists,'hero':selected}
+        con.execute("""INSERT INTO match_player_stats(match_id,user_id,kills,deaths,assists,hero,updated_by,updated_at)
+                     VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(match_id,user_id) DO UPDATE SET kills=excluded.kills,
+                     deaths=excluded.deaths,assists=excluded.assists,hero=excluded.hero,
+                     updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                    (match_id,user_id,form.kills,form.deaths,form.assists,selected,staff['id'],now()))
         con.execute('INSERT INTO match_stat_audit(match_id,user_id,editor_id,before_json,after_json,changed_at) VALUES(?,?,?,?,?,?)',
                    (match_id,user_id,staff['id'],json.dumps(before),json.dumps(new),now()))
         return {'ok':True,'player_id':user_id,**new}
@@ -1482,7 +1559,7 @@ def admin_matches(request:Request):
         data=rows(con,'SELECT id,mode,status,created_at,ready_deadline,host_user_id,cancel_reason,winning_side FROM matches ORDER BY id DESC LIMIT 100')
         for m in data:
             m['players']=rows(con,'''SELECT mm.user_id AS id,mm.side,mm.captain,u.nickname,
-                       s.kills,s.deaths,s.assists FROM match_members mm JOIN users u ON u.id=mm.user_id
+                       s.kills,s.deaths,s.assists,s.hero FROM match_members mm JOIN users u ON u.id=mm.user_id
                        LEFT JOIN match_player_stats s ON s.match_id=mm.match_id AND s.user_id=mm.user_id
                        WHERE mm.match_id=? ORDER BY mm.side,mm.captain DESC,u.nickname''',(m['id'],))
             m['evidence']=rows(con,'SELECT side,winning_side,submitted_at FROM match_evidence WHERE match_id=? ORDER BY side',(m['id'],))

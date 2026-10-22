@@ -187,3 +187,25 @@ body.pro-style .rank-large,.pro-feature-stats{font-variant-numeric:tabular-nums}
 @media(max-width:780px){.pro-analytics-header{flex-direction:column;align-items:flex-start}.pro-kpi{padding:15px}.pro-kpi-grid{gap:8px}.pro-feature-panel{padding:19px}.pro-feature-row{gap:12px}.pro-history-row{gap:8px}.style-switch{font-size:0;padding:8px}.style-switch::before{content:'⚡';font-size:17px}}
 @media(max-width:420px){.pro-feature-stats{gap:6px}.pro-feature-stats>div{padding:10px 8px}.pro-feature-stats strong{font-size:17px}.pro-kpi strong{font-size:27px}.pro-history-row .mono{font-size:11px}.pro-history-details strong{font-size:11px}.pro-modebar button{font-size:11px;padding:9px 10px}.mobile-nav button{min-width:0;font-size:9px}}
 body.force-mobile .pro-feature-row{display:block}body.force-mobile .pro-feature-row>*+*{margin-top:14px}body.force-mobile .pro-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}body.force-mobile .pro-analytics-header{flex-direction:column;align-items:flex-start}body.force-mobile .pro-feature-panel{padding:17px}body.force-mobile .pro-history-row{gap:8px}body.force-mobile .pro-modebar button{font-size:11px;padding:9px}
+
+/* NEXUS Arena 1.5 — MLBB hero catalog & server-approved personal win rates */
+.hero-entry{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.hero-entry h2{margin:6px 0}.hero-entry p{margin:0 0 4px;max-width:540px}
+dialog.large-dialog{width:min(94vw,860px);padding:clamp(16px,3vw,28px)}
+.hero-modal{min-width:0}.hero-modal>.tag-row{margin-bottom:16px}.hero-modal>.tag-row h2{margin:6px 0}
+.hero-stat-head{display:flex;gap:12px;margin:20px 0}.hero-stat-head>div{border:1px solid var(--line);border-radius:13px;background:var(--surface2);padding:14px 20px;min-width:130px}
+.hero-stat-head strong,.hero-stat-head small{display:block}.hero-stat-head strong{font-size:24px}.hero-stat-head small{color:var(--muted);font-size:11px}
+.hero-controls{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;align-items:end}.hero-controls>.form-field{min-width:0;margin-bottom:0}
+.hero-controls label>span{font-size:11px;color:var(--muted);font-weight:800}
+.hero-controls input,.hero-controls select{min-width:0;width:100%;padding:11px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--text);min-height:44px}
+.hero-count{color:var(--muted);font-size:11px;margin:15px 0 8px;text-align:right}
+.hero-list{display:flex;flex-direction:column;gap:8px;max-height:min(58vh,630px);overflow:auto;overscroll-behavior:contain;padding-right:3px}
+.hero-item{display:flex;align-items:center;gap:13px;padding:11px 14px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;min-width:0}
+.hero-monogram{background:linear-gradient(135deg,#4c2974,#29203e);border:1px solid #644987;border-radius:11px;width:49px;height:49px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#e7d5ff;font-weight:900;font-size:18px}
+body.pro-style .hero-monogram{background:linear-gradient(135deg,#335a21,#172a18);border-color:#598b37;color:#d2ff89}
+.hero-identity{min-width:0;flex:1}.hero-identity strong,.hero-identity small{display:block;overflow-wrap:anywhere}.hero-identity strong{font-size:14px}.hero-identity small{font-size:11px;color:var(--muted)}
+.hero-progress{height:5px;max-width:270px;border-radius:9px;background:#34323c;overflow:hidden;margin-top:7px}.hero-progress span{display:block;height:100%;background:var(--green);border-radius:9px}
+.hero-numbers{text-align:right;min-width:112px;flex-shrink:0}.hero-numbers strong{display:block;font-size:19px;color:var(--green)}.hero-numbers small{display:block;color:var(--muted);font-size:11px;white-space:nowrap}
+.kda-row .hero-review-field{min-width:158px;flex:1 1 158px;display:flex;flex-direction:column;align-items:stretch;gap:3px}.kda-row .hero-review-field input{width:100%;min-width:0}
+@media(max-width:650px){.hero-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-controls>.form-field:first-child{grid-column:span 2}.hero-entry .primary{width:100%}.hero-monogram{width:42px;height:42px;font-size:15px}.hero-item{gap:9px;padding:11px 9px}.hero-numbers{min-width:90px}.hero-numbers strong{font-size:17px}.hero-numbers small{font-size:10px}.hero-stat-head>div{flex:1;min-width:0}}
+@media(max-width:375px){.hero-stat-head{gap:7px}.hero-stat-head>div{padding:10px}.hero-identity strong{font-size:12px}.hero-identity small{font-size:10px}.hero-numbers{min-width:82px}}
