@@ -1,0 +1,35 @@
+name: Import NEXUS hero portraits (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image dependency
+        run: python -m pip install "Pillow>=10.0"
+      - name: Locate and download all available portraits
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT=$(find . -path '*/tools/cache_hero_portraits.py' -type f -print -quit)
+          if [ -z "$SCRIPT" ]; then echo "Can't find portrait importer. Upload v1.6 project files first."; exit 1; fi
+          python "$SCRIPT" --workers 6
+      - name: Commit local hero portraits
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          find . -type d -path '*/web/heroes/portraits' -print0 | xargs -0 -r git add -A --
+          if git diff --cached --quiet; then
+            echo "No new portraits were downloaded."
+          else
+            git commit -m "Add cached MLBB hero portrait images"
+            git push
+          fi
